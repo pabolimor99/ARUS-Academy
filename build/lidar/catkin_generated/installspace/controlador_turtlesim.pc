@@ -1,0 +1,8 @@
+prefix=/home/pabolimor/arusWS/install
+
+Name: controlador_turtlesim
+Description: Description of controlador_turtlesim
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

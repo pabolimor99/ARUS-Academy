@@ -1,0 +1,2 @@
+custom_msgs:lidar
+-DCATKIN_DEVEL_PREFIX=/home/pabolimor/arusWS/devel -DCMAKE_INSTALL_PREFIX=/home/pabolimor/arusWS/install -G Unix Makefiles

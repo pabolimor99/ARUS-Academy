@@ -1,0 +1,8 @@
+prefix=/home/pabolimor/arusWS/install
+
+Name: msgPersonalizados
+Description: Description of msgPersonalizados
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 
