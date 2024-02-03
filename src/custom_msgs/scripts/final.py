@@ -4,14 +4,22 @@ import numpy as np
 from scipy.spatial import Delaunay
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
-from custom_msgs.msg import Cone, Map
+from custom_msgs.msg import Map
 from std_msgs.msg import ColorRGBA
+from sklearn.cluster import DBSCAN
 
-cones = []  
-
+cones = [] 
 route_publisher = None
 triangles_publisher = None
 
+EPS= 5.
+MIN_SAMPLES= 3
+
+def filtrar_aislados(cones):
+    pos= np.array([cone['position'] for cone in cones])
+    clustering= DBSCAN(eps= EPS, min_samples= MIN_SAMPLES).fit(pos)
+    filtrados= [cones[i] for i in range(len(cones)) if clustering.labels_[i] != -1]
+    return filtrados
 
 def procesa_ruta():
     if not cones or len(cones) < 3:
@@ -24,6 +32,26 @@ def procesa_ruta():
     route, simplices = calculate_route(cones, delaunay)
     visualize_triangles(points, delaunay.simplices, simplices, triangles_publisher) 
     publish_route(route, route_publisher)
+
+def ordenar_midpoints(midpoints):
+    if not midpoints:
+        return []
+
+    def distancia(p1, p2):
+        return np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+
+    punto_actual = min(midpoints, key=lambda p: distancia(p, (0, 0)))
+    midpoints_ordenados = [punto_actual]
+
+    midpoints.remove(punto_actual)
+
+    while midpoints:
+        siguiente_punto = min(midpoints, key=lambda p: distancia(p, punto_actual))
+        midpoints_ordenados.append(siguiente_punto)
+        midpoints.remove(siguiente_punto)
+        punto_actual = siguiente_punto
+
+    return midpoints_ordenados
 
 
 
@@ -47,7 +75,10 @@ def calculate_route(cones, delaunay):
                 route.append(midpoint)
                 seen_midpoints.add(midpoint)
 
-    return sorted(route, key=lambda punto: punto[0]), simplices_validos
+    route= ordenar_midpoints(route)
+    print(route)
+
+    return route, simplices_validos
 
 def visualize_triangles(points, simplices, simplices_validos, publisher):
     marker = Marker()
@@ -100,13 +131,13 @@ def publish_cones(cones, publisher):
             marker.colors.append(ColorRGBA(0, 0, 1, 1)) 
         elif cone['color'] == 'y': 
             marker.colors.append(ColorRGBA(1, 1, 0, 1))
-        
 
     publisher.publish(marker)
 
 def callback(msg):
     global cones
-    cones = [{'position': (cone.position.x, cone.position.y), 'color': cone.color} for cone in msg.cones]
+    cones = [{'position': (cone.position.x, cone.position.y), 'color': cone.color} for cone in msg.cones if cone.color != 'o']
+    cones= filtrar_aislados(cones)
     publish_cones(cones, cone_publisher)
     procesa_ruta()
 
@@ -120,9 +151,6 @@ def listener():
     cone_publisher = rospy.Publisher('visualization_cones', Marker, queue_size=10)
 
     rospy.spin()
-
-if __name__ == '__main__':
-    listener()
 
 if __name__ == '__main__':
     listener()
