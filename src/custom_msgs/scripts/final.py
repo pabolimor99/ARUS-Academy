@@ -120,23 +120,36 @@ def publish_cones(cones, publisher):
     marker.header.frame_id = "rslidar"
     marker.type = Marker.SPHERE_LIST
     marker.action = Marker.ADD
+    marker.pose.orientation.x = 0
+    marker.pose.orientation.y = 0
+    marker.pose.orientation.z = 0
+    marker.pose.orientation.w = 1  
     marker.scale.x = 0.2 
     marker.scale.y = 0.2
     marker.scale.z = 0.2
+    marker.color.a = 1.0
 
     for cone in cones:
         point = Point(x=cone['position'][0], y=cone['position'][1], z=0)
         marker.points.append(point)
+        color = ColorRGBA()  
         if cone['color'] == 'b': 
-            marker.colors.append(ColorRGBA(0, 0, 1, 1)) 
+            color = ColorRGBA(0, 0, 1, 1)  
         elif cone['color'] == 'y': 
-            marker.colors.append(ColorRGBA(1, 1, 0, 1))
+            color = ColorRGBA(1, 1, 0, 1)  
+        marker.colors.append(color)
+
+    if not marker.points:  
+        rospy.logwarn("Intentando publicar un Marker sin puntos.")
+        return
 
     publisher.publish(marker)
 
+
 def callback(msg):
     global cones
-    cones = [{'position': (cone.position.x, cone.position.y), 'color': cone.color} for cone in msg.cones if cone.color != 'o']
+    cones = [{'position': (cone.position.x, cone.position.y), 'color': cone.color} for cone in msg.cones if cone.color != 'o' and 
+                                                                cone.confidence > 0.9]
     cones= filtrar_aislados(cones)
     publish_cones(cones, cone_publisher)
     procesa_ruta()
